@@ -19,6 +19,7 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
 from starlette.types import Receive, Scope, Send
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
+from starlette.background import BackgroundTasks
 
 from .constants import DATA_TYPE_JSON, DATA_TYPE_MULTIPART, PLAYGROUND_HTML
 from .exceptions import HttpBadRequestError, HttpError
@@ -121,8 +122,8 @@ class GraphQL:
             if isawaitable(context):
                 context = await context
             return context
-
-        return self.context_value or {"request": request}
+        background = BackgroundTasks()
+        return self.context_value or {"request": request,"background":background}
 
     async def get_extensions_for_request(
         self, request: Any, context: Optional[ContextValue]
@@ -191,7 +192,9 @@ class GraphQL:
             middleware=middleware,
         )
         status_code = 200 if success else 400
-        return JSONResponse(response, status_code=status_code)
+
+        background = context_value.get('backgound')
+        return JSONResponse(response, status_code=status_code,background=background)
 
     async def extract_data_from_request(self, request: Request):
         content_type = request.headers.get("Content-Type", "")
